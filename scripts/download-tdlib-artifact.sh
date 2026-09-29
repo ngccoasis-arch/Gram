@@ -35,5 +35,13 @@ unzip -q "$work_dir/artifact.zip" -d "$work_dir/content"
 (cd "$work_dir/content" && sha256sum --check SHA256SUMS)
 mkdir -p "$destination_repository"
 cp -R "$work_dir/content/maven-repository/." "$destination_repository/"
+# Artifacts produced before the coordinate-path fix used an extra `tdlib`
+# directory. Normalize that legacy layout so the existing AAR remains reusable.
+legacy_dir="$destination_repository/org/telegram/tdlib/tdlib-android/$TDLIB_COMMIT"
+canonical_dir="$destination_repository/org/telegram/tdlib-android/$TDLIB_COMMIT"
+if [[ -d "$legacy_dir" && ! -d "$canonical_dir" ]]; then
+  mkdir -p "$(dirname "$canonical_dir")"
+  mv "$legacy_dir" "$canonical_dir"
+fi
 install -m 0644 "$work_dir/content/tdlib-metadata.properties" "$destination_repository/tdlib-metadata.properties"
 echo "Installed pinned TDLib ${TDLIB_COMMIT} from Actions artifact ${artifact_id}."
