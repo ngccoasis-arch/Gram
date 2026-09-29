@@ -20,7 +20,7 @@ Live Telegram access requires a production CI build: first build the pinned offi
 ./gradlew -PgramTdlibMode=demo testDebugUnitTest lintDebug assembleDebug
 ```
 
-`Build pinned TDLib` performs the expensive native build only when the pin/tooling changes or the workflow is dispatched. It checks out the official `tdlib/td` repository at the exact SHA in `gradle/tdlib.versions.properties`, invokes the upstream Android scripts, packages the configured ABI set (initially `arm64-v8a`) into an AAR, and uploads both the reusable output and a TDLib-backed debug APK.
+`Build pinned TDLib` performs the expensive native build only when the pin/tooling changes or the workflow is dispatched. It checks out the official `tdlib/td` repository at the exact SHA in `gradle/tdlib.versions.properties`, invokes the upstream Android scripts, packages the configured ABI set (initially `arm64-v8a`) into `tdlib-android-<short-sha>.aar` with a SHA-256 sidecar, and uploads both the reusable output and a TDLib-backed debug APK.
 
 Ordinary `Build Android APK` runs never compile native code. They download the matching unexpired TDLib Actions artifact, verify its checksums and commit metadata, run tests/lint, and upload `app-debug.apk`.
 

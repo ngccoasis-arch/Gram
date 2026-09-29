@@ -143,13 +143,15 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          cp tools/tdlib-aar/build/outputs/aar/tdlib-prebuilt-release.aar dist/tdlib.aar
+          aar_name="tdlib-android-${TDLIB_COMMIT:0:12}.aar"
+          cp tools/tdlib-aar/build/outputs/aar/tdlib-prebuilt-release.aar "dist/$aar_name"
           cp "$RUNNER_TEMP/tdlib-source/example/android/tdlib/tdlib.zip" dist/tdlib-official.zip
           cp "$RUNNER_TEMP/tdlib-source/LICENSE_1_0.txt" dist/LICENSE_1_0.txt
-          aar_sha=$(sha256sum dist/tdlib.aar | cut -d ' ' -f 1)
+          aar_sha=$(sha256sum "dist/$aar_name" | cut -d ' ' -f 1)
+          echo "$aar_sha  $aar_name" > "dist/$aar_name.sha256"
           maven_dir="dist/maven-repository/org/telegram/tdlib/tdlib-android/$TDLIB_COMMIT"
           mkdir -p "$maven_dir"
-          cp dist/tdlib.aar "$maven_dir/tdlib-android-$TDLIB_COMMIT.aar"
+          cp "dist/$aar_name" "$maven_dir/tdlib-android-$TDLIB_COMMIT.aar"
           {
             echo '<?xml version="1.0" encoding="UTF-8"?>'
             echo '<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">'
@@ -163,6 +165,7 @@ jobs:
           {
             echo "TDLIB_REPOSITORY=$TDLIB_REPOSITORY"
             echo "TDLIB_COMMIT=$TDLIB_COMMIT"
+            echo "TDLIB_AAR_FILENAME=$aar_name"
             echo "TDLIB_ANDROID_ABIS=$TDLIB_ANDROID_ABIS"
             echo "TDLIB_NDK_VERSION=$TDLIB_NDK_VERSION"
             echo "TDLIB_OPENSSL_VERSION=$TDLIB_OPENSSL_VERSION"
@@ -172,10 +175,10 @@ jobs:
           (cd dist && find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS)
           IFS=',' read -ra abis <<< "$TDLIB_ANDROID_ABIS"
           for abi in "${abis[@]}"; do
-            unzip -l dist/tdlib.aar | grep "jni/$abi/libtdjni.so"
+            unzip -l "dist/$aar_name" | grep "jni/$abi/libtdjni.so"
           done
-          unzip -l dist/tdlib.aar | grep 'classes.jar'
-          unzip -l dist/tdlib.aar | grep 'META-INF/TDLIB-LICENSE_1_0.txt'
+          unzip -l "dist/$aar_name" | grep 'classes.jar'
+          unzip -l "dist/$aar_name" | grep 'META-INF/TDLIB-LICENSE_1_0.txt'
 
       - name: Upload reusable TDLib output
         uses: actions/upload-artifact@v4
