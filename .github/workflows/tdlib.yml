@@ -148,7 +148,7 @@ jobs:
           cp "$RUNNER_TEMP/tdlib-source/LICENSE_1_0.txt" dist/LICENSE_1_0.txt
           aar_sha=$(sha256sum "dist/$aar_name" | cut -d ' ' -f 1)
           echo "$aar_sha  $aar_name" > "dist/$aar_name.sha256"
-          maven_dir="dist/maven-repository/org/telegram/tdlib/tdlib-android/$TDLIB_COMMIT"
+          maven_dir="dist/maven-repository/org/telegram/tdlib-android/$TDLIB_COMMIT"
           mkdir -p "$maven_dir"
           cp "dist/$aar_name" "$maven_dir/tdlib-android-$TDLIB_COMMIT.aar"
           {
