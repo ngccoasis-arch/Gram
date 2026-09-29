@@ -1,0 +1,4 @@
+# Copy this file to telegram.properties for an optional local Android build.
+# telegram.properties is ignored by Git. Never commit real Telegram credentials.
+telegram.apiId=0
+telegram.apiHash=not-configured

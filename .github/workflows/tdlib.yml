@@ -1,0 +1,226 @@
+name: Build pinned TDLib
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - gradle/tdlib.versions.properties
+      - scripts/limit-tdlib-abis.py
+      - tools/tdlib-aar/**
+      - .github/workflows/tdlib.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tdlib-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-tdlib:
+    name: Official TDLib source to reusable Android AAR
+    runs-on: ubuntu-22.04
+    timeout-minutes: 360
+
+    steps:
+      - name: Check out Gram
+        uses: actions/checkout@v4
+
+      - name: Load pinned TDLib configuration
+        id: config
+        shell: bash
+        run: |
+          set -a
+          source gradle/tdlib.versions.properties
+          set +a
+          [[ "$TDLIB_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$TDLIB_INTERFACE" == "Java" ]]
+          abi_slug=${TDLIB_ANDROID_ABIS//,/-}
+          echo "TDLIB_REPOSITORY=$TDLIB_REPOSITORY" >> "$GITHUB_ENV"
+          echo "TDLIB_COMMIT=$TDLIB_COMMIT" >> "$GITHUB_ENV"
+          echo "TDLIB_ANDROID_ABIS=$TDLIB_ANDROID_ABIS" >> "$GITHUB_ENV"
+          echo "TDLIB_NDK_VERSION=$TDLIB_NDK_VERSION" >> "$GITHUB_ENV"
+          echo "TDLIB_OPENSSL_VERSION=$TDLIB_OPENSSL_VERSION" >> "$GITHUB_ENV"
+          echo "TDLIB_INTERFACE=$TDLIB_INTERFACE" >> "$GITHUB_ENV"
+          echo "artifact_name=tdlib-android-${TDLIB_COMMIT}-${abi_slug}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android command-line tools for APK packaging
+        uses: android-actions/setup-android@v3
+
+      - name: Install APK build SDK
+        shell: bash
+        run: sdkmanager "platforms;android-36" "build-tools;35.0.0" "build-tools;36.0.0"
+
+      - name: Set up Gradle cache
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Install official-script host prerequisites
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes build-essential clang cmake gperf ninja-build php-cli perl make unzip wget zip
+
+      - name: Check out exact official TDLib commit
+        shell: bash
+        run: |
+          git init "$RUNNER_TEMP/tdlib-source"
+          git -C "$RUNNER_TEMP/tdlib-source" remote add origin "$TDLIB_REPOSITORY"
+          git -C "$RUNNER_TEMP/tdlib-source" fetch --depth=1 origin "$TDLIB_COMMIT"
+          git -C "$RUNNER_TEMP/tdlib-source" checkout --detach FETCH_HEAD
+          test "$(git -C "$RUNNER_TEMP/tdlib-source" rev-parse HEAD)" = "$TDLIB_COMMIT"
+
+      - name: Restrict official scripts to configured ABIs
+        shell: bash
+        run: |
+          IFS=',' read -ra abis <<< "$TDLIB_ANDROID_ABIS"
+          python3 scripts/limit-tdlib-abis.py "$RUNNER_TEMP/tdlib-source/example/android" "${abis[@]}"
+
+      - name: Fetch official Android SDK and NDK toolchain
+        shell: bash
+        working-directory: ${{ runner.temp }}/tdlib-source/example/android
+        run: ./fetch-sdk.sh "$RUNNER_TEMP/tdlib-sdk" "$TDLIB_NDK_VERSION"
+
+      - name: Build OpenSSL through the official Android script
+        shell: bash
+        working-directory: ${{ runner.temp }}/tdlib-source/example/android
+        run: >-
+          ./build-openssl.sh
+          "$RUNNER_TEMP/tdlib-sdk"
+          "$TDLIB_NDK_VERSION"
+          "$RUNNER_TEMP/tdlib-openssl"
+          "$TDLIB_OPENSSL_VERSION"
+
+      - name: Build TDLib and generated Java/JNI bindings
+        shell: bash
+        working-directory: ${{ runner.temp }}/tdlib-source/example/android
+        run: >-
+          ./build-tdlib.sh
+          "$RUNNER_TEMP/tdlib-sdk"
+          "$TDLIB_NDK_VERSION"
+          "$RUNNER_TEMP/tdlib-openssl"
+          "c++_static"
+          "$TDLIB_INTERFACE"
+
+      - name: Package reusable TDLib AAR
+        shell: bash
+        run: |
+          chmod +x gradlew
+          ./gradlew -p tools/tdlib-aar --no-daemon --max-workers=2 \
+            -PtdlibOutputDir="$RUNNER_TEMP/tdlib-source/example/android/tdlib" \
+            -PtdlibAbis="$TDLIB_ANDROID_ABIS" \
+            assembleRelease
+          mkdir -p "$RUNNER_TEMP/tdlib-aar-license/META-INF"
+          cp "$RUNNER_TEMP/tdlib-source/LICENSE_1_0.txt" \
+            "$RUNNER_TEMP/tdlib-aar-license/META-INF/TDLIB-LICENSE_1_0.txt"
+          (cd "$RUNNER_TEMP/tdlib-aar-license" && \
+            zip -q -u "$GITHUB_WORKSPACE/tools/tdlib-aar/build/outputs/aar/tdlib-prebuilt-release.aar" \
+              META-INF/TDLIB-LICENSE_1_0.txt)
+
+      - name: Verify 16 KB ELF segment alignment
+        shell: bash
+        run: |
+          readelf="$RUNNER_TEMP/tdlib-sdk/ndk/$TDLIB_NDK_VERSION/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf"
+          IFS=',' read -ra abis <<< "$TDLIB_ANDROID_ABIS"
+          for abi in "${abis[@]}"; do
+            library="$RUNNER_TEMP/tdlib-source/example/android/tdlib/libs/$abi/libtdjni.so"
+            mapfile -t alignments < <("$readelf" -lW "$library" | awk '$1 == "LOAD" { print $NF }')
+            (( ${#alignments[@]} > 0 ))
+            for alignment in "${alignments[@]}"; do
+              if (( alignment < 0x4000 )); then
+                echo "$library has an ELF LOAD alignment below 16 KB: $alignment" >&2
+                exit 1
+              fi
+            done
+          done
+
+      - name: Create checked artifact bundle
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp tools/tdlib-aar/build/outputs/aar/tdlib-prebuilt-release.aar dist/tdlib.aar
+          cp "$RUNNER_TEMP/tdlib-source/example/android/tdlib/tdlib.zip" dist/tdlib-official.zip
+          cp "$RUNNER_TEMP/tdlib-source/LICENSE_1_0.txt" dist/LICENSE_1_0.txt
+          aar_sha=$(sha256sum dist/tdlib.aar | cut -d ' ' -f 1)
+          maven_dir="dist/maven-repository/org/telegram/tdlib/tdlib-android/$TDLIB_COMMIT"
+          mkdir -p "$maven_dir"
+          cp dist/tdlib.aar "$maven_dir/tdlib-android-$TDLIB_COMMIT.aar"
+          {
+            echo '<?xml version="1.0" encoding="UTF-8"?>'
+            echo '<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">'
+            echo '  <modelVersion>4.0.0</modelVersion>'
+            echo '  <groupId>org.telegram</groupId>'
+            echo '  <artifactId>tdlib-android</artifactId>'
+            echo "  <version>$TDLIB_COMMIT</version>"
+            echo '  <packaging>aar</packaging>'
+            echo '</project>'
+          } > "$maven_dir/tdlib-android-$TDLIB_COMMIT.pom"
+          {
+            echo "TDLIB_REPOSITORY=$TDLIB_REPOSITORY"
+            echo "TDLIB_COMMIT=$TDLIB_COMMIT"
+            echo "TDLIB_ANDROID_ABIS=$TDLIB_ANDROID_ABIS"
+            echo "TDLIB_NDK_VERSION=$TDLIB_NDK_VERSION"
+            echo "TDLIB_OPENSSL_VERSION=$TDLIB_OPENSSL_VERSION"
+            echo "TDLIB_INTERFACE=$TDLIB_INTERFACE"
+            echo "TDLIB_AAR_SHA256=$aar_sha"
+          } > dist/tdlib-metadata.properties
+          (cd dist && find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS)
+          IFS=',' read -ra abis <<< "$TDLIB_ANDROID_ABIS"
+          for abi in "${abis[@]}"; do
+            unzip -l dist/tdlib.aar | grep "jni/$abi/libtdjni.so"
+          done
+          unzip -l dist/tdlib.aar | grep 'classes.jar'
+          unzip -l dist/tdlib.aar | grep 'META-INF/TDLIB-LICENSE_1_0.txt'
+
+      - name: Upload reusable TDLib output
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.config.outputs.artifact_name }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
+
+      - name: Require live Telegram credentials for the APK
+        shell: bash
+        env:
+          TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
+          TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+        run: |
+          if [[ ! "$TELEGRAM_API_ID" =~ ^[1-9][0-9]*$ ]]; then
+            echo "TELEGRAM_API_ID is missing or invalid; refusing to publish a non-login APK." >&2
+            exit 1
+          fi
+          if [[ -z "$TELEGRAM_API_HASH" || "$TELEGRAM_API_HASH" == "not-configured" ]]; then
+            echo "TELEGRAM_API_HASH is missing; refusing to publish a non-login APK." >&2
+            exit 1
+          fi
+
+      - name: Build production-wired debug APK
+        shell: bash
+        env:
+          TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
+          TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+        run: |
+          mkdir -p prebuilts/tdlib-maven
+          cp -R dist/maven-repository/. prebuilts/tdlib-maven/
+          cp dist/tdlib-metadata.properties prebuilts/tdlib-maven/tdlib-metadata.properties
+          ./gradlew --no-daemon --max-workers=2 -PgramTdlibMode=production \
+            testDebugUnitTest lintDebug assembleDebug
+
+      - name: Verify Android 16 KB APK alignment
+        shell: bash
+        run: "$ANDROID_HOME/build-tools/36.0.0/zipalign" -c -P 16 -v 4 app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Upload TDLib-backed debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: gram-debug-tdlib-${{ github.run_number }}
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14

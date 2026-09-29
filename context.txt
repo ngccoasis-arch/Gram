@@ -1,0 +1,201 @@
+I want to start a new Android project called "Gram" (Telegram 延伸 APP).
+
+PROJECT PURPOSE
+
+The goal is to build a third-party Telegram Android client that can eventually serve as an alternative/replacement for Plus Messenger (Android package: org.telegram.plus).
+
+This project is NOT intended to replace Telegram Premium and is NOT intended to create a new messaging service or network.
+
+The application should remain a Telegram client and use Telegram's official client technologies/APIs where appropriate, particularly TDLib / Telegram API.
+
+The overall idea is:
+
+Telegram
+-> Telegram API / TDLib
+-> My Android client
+-> Custom Telegram experience
+
+REFERENCE APPLICATION
+
+The main reference application is Plus Messenger.
+
+I use Plus Messenger as a functional reference because I want some of the additional functionality and customization that it provides compared with the standard Telegram client.
+
+Do not assume that I want to clone every Plus Messenger feature.
+
+We should identify the features that are actually useful to me and implement them selectively.
+
+CORE OBJECTIVES
+
+1. Build an Android Telegram client.
+
+2. Allow users to log in to and use their existing Telegram accounts.
+
+3. Support normal Telegram functionality such as chats, groups, channels, messages, media and files through Telegram's supported client APIs.
+
+4. Recreate useful Plus Messenger-style functionality where appropriate.
+
+Important areas include:
+
+- Chat organization/categories
+- Multiple Telegram accounts
+- Additional UI customization
+- Better media/file download management
+- Clear download progress and status
+- Improved download performance
+
+DOWNLOAD PERFORMANCE
+
+Download handling is one of the most important parts of this project.
+
+I currently experience download-speed/performance limitations when using Telegram/Plus Messenger.
+
+I want this project to investigate the actual cause of those limitations and determine what can legitimately be improved by a custom Telegram client.
+
+Do NOT simply assume that a client can bypass Telegram server-side restrictions.
+
+Investigate whether download performance is affected by:
+
+- Telegram/TDLib behavior
+- Telegram server-side limitations
+- Client implementation
+- Number of concurrent downloads
+- Connection management
+- Network/ISP conditions
+- Android background restrictions
+- Storage/write performance
+- Plus Messenger-specific implementation
+- Telegram Premium versus non-Premium server-side behavior
+
+The application should eventually have a proper download manager.
+
+Possible functionality includes:
+
+- Download queue
+- Download progress
+- Download percentage
+- Current download speed
+- Downloaded size / total size
+- Pause where technically supported
+- Resume
+- Cancel
+- Retry failed downloads
+- Concurrent download management
+- Download history
+- File location management
+- Background downloads
+
+These are candidate requirements and should be validated against what TDLib and Telegram actually support before implementation.
+
+TECHNICAL DIRECTION
+
+Platform:
+Android Only.
+
+Preferred Telegram integration direction:
+TDLib / official Telegram APIs.
+
+Do not implement the Telegram protocol from scratch unless there is an exceptionally strong technical reason.
+
+The Android technology stack has NOT yet been finalized.
+
+Decisions still to be made include:
+
+- Kotlin
+- Jetpack Compose versus Android Views
+- Minimum Android version
+- Target Android version
+- Application architecture
+- TDLib integration architecture
+- Local database/storage architecture
+- Background download architecture
+- APK versus Google Play distribution
+- Open-source versus private repository
+
+Codex should recommend sensible choices before locking these decisions in.
+
+SCOPE BOUNDARIES
+
+This project is NOT:
+
+- A Telegram Premium replacement
+- A Telegram bot
+- A new messaging network
+- A standalone Telegram file downloader
+- A modified Telegram server
+- My separate Text Reader / Read-Aloud Agent project
+
+It is a custom Android Telegram client.
+
+PROJECT PRINCIPLE
+
+The project can be summarized as:
+
+"Build my preferred Android Telegram client using Plus Messenger as a functional reference."
+
+Plus Messenger should be treated as inspiration/reference rather than something that must be cloned exactly.
+
+CURRENT STATUS
+
+The project is currently at the concept/requirements stage.
+
+Assume that no implementation exists unless the repository indicates otherwise.
+
+Do not assume that the following have already been completed:
+
+- Android project initialization
+- TDLib integration
+- Telegram authentication
+- Chat synchronization
+- Download manager
+- UI
+- Database
+- GitHub project structure
+- Build pipeline
+
+INITIAL CODEX TASK
+
+Before writing large amounts of code:
+
+1. Review these requirements.
+
+2. Research/verify the current recommended way to build a third-party Android Telegram client using Telegram's supported APIs/TDLib.
+
+3. Identify technical or Telegram API limitations that could affect the project.
+
+4. Pay particular attention to whether download-speed improvements are technically possible and which limitations are client-side versus Telegram/server-side.
+
+5. Recommend an Android architecture and technology stack.
+
+6. Define a realistic MVP.
+
+7. Propose the repository/project structure.
+
+8. Create an implementation roadmap broken into small milestones.
+
+9. Identify any decisions that require my approval before implementation.
+
+10. Avoid unnecessary complexity.
+
+The first MVP should focus on proving that the fundamental architecture works rather than recreating all Plus Messenger functionality.
+
+A sensible early proof of concept would be:
+
+Android app
+-> TDLib integration
+-> Telegram authentication
+-> Load chat list
+-> Open a chat
+-> Display messages
+-> Download a Telegram file
+-> Display download progress
+
+Once this foundation works reliably, expand toward the custom download manager and selected Plus Messenger-style features.
+
+IMPORTANT
+
+Do not invent requirements that I haven't specified.
+
+When there are multiple reasonable implementation choices with significant long-term consequences, explain the trade-offs and ask me before making the decision.
+
+Keep the project modular so additional Telegram-client functionality can be added later.
