@@ -46,3 +46,9 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 }
+
+dependencies {
+    // TDLib's generated Java API uses these annotations. They are compile-time metadata and
+    // must not be packaged into the reusable TDLib AAR.
+    compileOnly("androidx.annotation:annotation:1.9.1")
+}
