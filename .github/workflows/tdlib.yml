@@ -213,8 +213,7 @@ jobs:
           mkdir -p prebuilts/tdlib-maven
           cp -R dist/maven-repository/. prebuilts/tdlib-maven/
           cp dist/tdlib-metadata.properties prebuilts/tdlib-maven/tdlib-metadata.properties
-          ./gradlew --no-daemon --max-workers=2 -PgramTdlibMode=production \
-            testDebugUnitTest lintDebug assembleDebug
+          ./gradlew --no-daemon --max-workers=2 -PgramTdlibMode=production testDebugUnitTest lintDebug assembleDebug
 
       - name: Verify Android 16 KB APK alignment
         shell: bash
