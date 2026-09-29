@@ -52,7 +52,7 @@ jobs:
             echo "TELEGRAM_API_ID is missing or invalid; refusing to publish a non-login APK." >&2
             exit 1
           fi
-          if [[ -z "$TELEGRAM_API_HASH" || "$TELEGRAM_API_HASH" == "not-configured" ]]; then
+          if [[ -z "${TELEGRAM_API_HASH//[[:space:]]/}" || "$TELEGRAM_API_HASH" == "not-configured" ]]; then
             echo "TELEGRAM_API_HASH is missing; refusing to publish a non-login APK." >&2
             exit 1
           fi

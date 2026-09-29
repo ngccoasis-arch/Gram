@@ -5,6 +5,12 @@
 local.properties
 telegram.properties
 credentials.properties
+secrets.properties
+*.secret
+*.secrets
+*.credentials
+.env
+.env.*
 keystore.properties
 signing.properties
 *.iml
