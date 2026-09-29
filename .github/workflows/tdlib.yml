@@ -7,7 +7,6 @@ on:
       - gradle/tdlib.versions.properties
       - scripts/limit-tdlib-abis.py
       - tools/tdlib-aar/**
-      - .github/workflows/tdlib.yml
 
 permissions:
   contents: read
@@ -204,16 +203,23 @@ jobs:
             exit 1
           fi
 
+      - name: Stage pinned TDLib Maven repository
+        shell: bash
+        run: |
+          mkdir -p prebuilts/tdlib-maven
+          cp -R dist/maven-repository/. prebuilts/tdlib-maven/
+          cp dist/tdlib-metadata.properties prebuilts/tdlib-maven/tdlib-metadata.properties
+
+      - name: Inspect pinned TDLib Maven repository
+        shell: bash
+        run: find prebuilts/tdlib-maven -type f -printf '%P\n' | sort
+
       - name: Build production-wired debug APK
         shell: bash
         env:
           TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
           TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
-        run: |
-          mkdir -p prebuilts/tdlib-maven
-          cp -R dist/maven-repository/. prebuilts/tdlib-maven/
-          cp dist/tdlib-metadata.properties prebuilts/tdlib-maven/tdlib-metadata.properties
-          ./gradlew --no-daemon --max-workers=2 -PgramTdlibMode=production testDebugUnitTest lintDebug assembleDebug
+        run: ./gradlew --no-daemon --max-workers=2 --refresh-dependencies -PgramTdlibMode=production testDebugUnitTest lintDebug assembleDebug
 
       - name: Verify Android 16 KB APK alignment
         shell: bash

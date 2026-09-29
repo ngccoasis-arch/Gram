@@ -65,6 +65,10 @@ jobs:
           chmod +x scripts/download-tdlib-artifact.sh
           scripts/download-tdlib-artifact.sh
 
+      - name: Inspect pinned TDLib Maven repository
+        shell: bash
+        run: find prebuilts/tdlib-maven -type f -printf '%P\n' | sort
+
       - name: Test, lint, and build TDLib-backed APK
         shell: bash
         env:
@@ -72,7 +76,7 @@ jobs:
           TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon --max-workers=2 -PgramTdlibMode=production testDebugUnitTest lintDebug assembleDebug
+          ./gradlew --no-daemon --max-workers=2 --refresh-dependencies -PgramTdlibMode=production testDebugUnitTest lintDebug assembleDebug
 
       - name: Verify Android 16 KB APK alignment
         shell: bash

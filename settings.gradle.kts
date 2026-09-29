@@ -13,7 +13,7 @@ dependencyResolutionManagement {
         mavenCentral()
         maven {
             name = "GramPinnedTdlib"
-            url = uri("prebuilts/tdlib-maven")
+            url = uri(rootProject.file("prebuilts/tdlib-maven"))
             content { includeGroup("org.telegram") }
         }
     }
