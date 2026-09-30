@@ -13,7 +13,7 @@ val tdlibVersions = Properties().apply {
 val pinnedTdlibCommit = tdlibVersions.getProperty("TDLIB_COMMIT")
 val tdlibMavenRoot = rootProject.file("prebuilts/tdlib-maven")
 val tdlibAar = tdlibMavenRoot.resolve(
-    "org/telegram/tdlib/tdlib-android/$pinnedTdlibCommit/tdlib-android-$pinnedTdlibCommit.aar"
+    "org/telegram/tdlib-android/$pinnedTdlibCommit/tdlib-android-$pinnedTdlibCommit.aar"
 )
 val tdlibMetadata = tdlibMavenRoot.resolve("tdlib-metadata.properties")
 val tdlibMode = providers.gradleProperty("gramTdlibMode").orElse("demo").get()
